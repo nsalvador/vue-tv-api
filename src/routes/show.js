@@ -57,6 +57,10 @@ const baseURL = 'https://api.thetvdb.com';
 
 const apikey = process.env.API_KEY;
 
+const userkey = process.env.USER_KEY;
+
+const username = process.env.USER_NAME;
+
 const login = () => {
 	return new Promise(async (resolve, reject) => {
 		try {
@@ -64,7 +68,7 @@ const login = () => {
 				baseURL,
 				url: '/login',
 				method: 'post',
-				data: { apikey }
+				data: { apikey, userkey, username }
 			});
 			headers['Authorization'] = `Bearer ${response.data.token}`;
 			resolve();
