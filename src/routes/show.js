@@ -17,8 +17,8 @@ const AWS = require('aws-sdk');
 const sharp = require('sharp');
 
 AWS.config.update({
-	accessKeyId: 'AKIAITZYJ322U2UQI5GA',
-	secretAccessKey: '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',
+	accessKeyId: process.env.ACCESS_KEY_ID,
+	secretAccessKey: process.env.SECRET_ACCESS_KEY,
 	region: 'us-east-2'
 });
 
@@ -55,7 +55,7 @@ const headers = {};
 
 const baseURL = 'https://api.thetvdb.com';
 
-const apikey = '9C6720573F21C156';
+const apikey = process.env.API_KEY;
 
 const login = () => {
 	return new Promise(async (resolve, reject) => {
