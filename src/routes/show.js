@@ -1,8 +1,4 @@
-/* eslint-disable no-async-promise-executor */
-/* eslint-disable require-atomic-updates */
 const express = require('express');
-
-const path = require('path');
 
 const router = new express.Router();
 
@@ -13,8 +9,6 @@ const auth = require('../middleware/auth');
 const axios = require('axios');
 
 const AWS = require('aws-sdk');
-
-const sharp = require('sharp');
 
 AWS.config.update({
 	accessKeyId: process.env.ACCESS_KEY_ID,
@@ -51,121 +45,80 @@ AWS.S3.prototype.uploadPromise = function(object) {
 
 const s3 = new AWS.S3();
 
+const sharp = require('sharp');
+
+const data = {
+	apikey: process.env.API_KEY,
+	userkey: process.env.USER_KEY,
+	username: process.env.USER_NAME
+};
+
 const headers = {};
 
 const baseURL = 'https://api.thetvdb.com';
 
-const apikey = process.env.API_KEY;
-
-const userkey = process.env.USER_KEY;
-
-const username = process.env.USER_NAME;
-
-const login = () => {
-	return new Promise(async (resolve, reject) => {
-		try {
-			let response = await axios({
-				baseURL,
-				url: '/login',
-				method: 'post',
-				data: { apikey, userkey, username }
-			});
-			headers['Authorization'] = `Bearer ${response.data.token}`;
-			resolve();
-		} catch (e) {
-			reject(e);
-		}
-	});
+const login = async () => {
+	try {
+		let response = await axios({
+			baseURL,
+			url: '/login',
+			method: 'post',
+			data
+		});
+		headers['Authorization'] = `Bearer ${response.data.token}`;
+		return Promise.resolve();
+	} catch (e) {
+		return Promise.reject(e);
+	}
 };
 
-let getPosterKey = id => {
-	return new Promise(async (resolve, reject) => {
-		try {
-			let response = null,
-				count = null,
-				source = null,
-				posterKey = '';
-			await login();
-			response = await axios({
-				headers,
-				baseURL,
-				url: `/series/${id}/images`,
-				method: 'get'
-			});
-			count = response.data.data.poster;
-			if (count) {
-				response = await axios({
-					headers,
-					baseURL,
-					url: `/series/${id}/images/query`,
-					method: 'get',
-					params: {
-						keyType: 'poster'
-					}
-				});
-				source =
-					response.data.data[Math.floor(Math.random() * count + 1) - 1]
-						.fileName;
-				posterKey = source !== '' ? source.split('/')[1] : '';
-			}
-			resolve(posterKey);
-		} catch (e) {
-			if (e.response.status === 404) {
-				return resolve('');
-			}
-			reject(e);
-		}
-	});
-};
-
-const deleteObjects = () => {
-	return new Promise(async (resolve, reject) => {
-		try {
-			const params = {
-				Bucket: 'tv-calendar-assets'
-			};
-			const data = await s3.listObjectsPromise(params);
-			const contents = data.Contents;
-			if (contents.length !== 0) {
-				const result = contents.map(item => {
-					return {
-						Key: item.Key
-					};
-				});
-				params.Delete = {
-					Objects: result
+const deleteObjects = async () => {
+	try {
+		const params = {
+			Bucket: 'tv-calendar-assets'
+		};
+		const data = await s3.listObjectsPromise(params);
+		const contents = data.Contents;
+		if (contents.length !== 0) {
+			const result = contents.map(item => {
+				return {
+					Key: item.Key
 				};
-				await s3.deleteObjectsPromise(params);
-			}
-			resolve();
-		} catch (e) {
-			reject(e);
+			});
+			params.Delete = {
+				Objects: result
+			};
+			await s3.deleteObjectsPromise(params);
 		}
-	});
+		return Promise.resolve();
+	} catch (e) {
+		return Promise.reject(e);
+	}
 };
 
-const createPoster = posterKey => {
-	return new Promise(async (resolve, reject) => {
-		try {
-			const baseURL = 'https://www.thetvdb.com';
-			const response = await axios({
-				baseURL,
-				url: `/banners/posters/${posterKey}`,
-				responseType: 'arraybuffer'
-			});
-			const data = await s3.uploadPromise({
-				Bucket: 'tv-calendar-assets',
-				Key: posterKey,
-				ACL: 'public-read',
-				ContentEncoding: 'base64',
-				ContentType: 'image/jpeg',
-				Body: Buffer.from(response.data)
-			});
-			resolve(data.Location);
-		} catch (e) {
-			reject(e);
+const getAndUploadPosterObjects = async series => {
+	try {
+		for (let item of series) {
+			if (!item.banner.includes('missing')) {
+				item.posterKey = item.banner.split('/')[3];
+				let response = await axios({
+					url: `https://www.thetvdb.com/banners/posters/${item.posterKey}`,
+					responseType: 'arraybuffer'
+				});
+				await s3.uploadPromise({
+					Bucket: 'tv-calendar-assets',
+					Key: item.posterKey,
+					ACL: 'public-read',
+					ContentEncoding: 'base64',
+					ContentType: 'image/jpeg',
+					Body: Buffer.from(response.data)
+				});
+			}
 		}
-	});
+		return Promise.resolve();
+	} catch (e) {
+		return Promise.reject(e);
+	}
 };
 
 // Create show
@@ -230,35 +183,30 @@ router.post('/shows', auth, async (req, res) => {
 	}
 });
 
-router.get('/shows/search', async (req, res) => {
+router.post('/shows/search', async (req, res) => {
 	try {
-		let response = null,
-			series = null;
+		const PAGE_SIZE = 10;
+		const page =
+			!req.query.page || req.query.page === '1' ? 0 : parseInt(req.query.page);
 		const params = {
 			name: req.body.show
 		};
 		await login();
-		response = await axios({
+		let response = await axios({
 			headers,
 			baseURL,
 			url: '/search/series',
 			method: 'get',
 			params
 		});
-		series = response.data.data;
+		let series = response.data.data;
+		const results = series.length;
+		series = series.splice(page * PAGE_SIZE, PAGE_SIZE);
 		await deleteObjects();
-		for (let item of series) {
-			const posterKey = await getPosterKey(item.id.toString());
-			if (posterKey !== '') {
-				item.posterKey = posterKey;
-				item.posterLocation = await createPoster(item.posterKey);
-			} else {
-				item.posterKey = '';
-				item.posterLocation = '';
-			}
-		}
+		await getAndUploadPosterObjects(series);
 		res.send({
-			count: series.length,
+			results,
+			page: page == 0 ? '1' : page,
 			series
 		});
 	} catch (e) {
