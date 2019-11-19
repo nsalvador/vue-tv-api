@@ -99,7 +99,7 @@ const deleteObjects = async () => {
 const getAndUploadPosterObjects = async series => {
 	try {
 		for (let item of series) {
-			if (!item.banner.includes('missing')) {
+			if (!item.banner.includes('missing') || !item.banner.includes('https')) {
 				item.posterKey = item.banner.split('/')[3];
 				let response = await axios({
 					url: `https://www.thetvdb.com/banners/posters/${item.posterKey}`,
@@ -185,9 +185,11 @@ router.post('/shows', auth, async (req, res) => {
 
 router.post('/shows/search', async (req, res) => {
 	try {
-		const PAGE_SIZE = 10;
+		const PAGE_SIZE = 8;
 		const page =
-			!req.query.page || req.query.page === '1' ? 0 : parseInt(req.query.page);
+			!req.query.page || req.query.page === '1'
+				? 0
+				: parseInt(req.query.page) - 1;
 		const params = {
 			name: req.body.show
 		};
@@ -206,7 +208,9 @@ router.post('/shows/search', async (req, res) => {
 		await getAndUploadPosterObjects(series);
 		res.send({
 			results,
-			page: page == 0 ? '1' : page,
+			page: page == 0 ? 1 : page + 1,
+			pages:
+				Math.floor(results / PAGE_SIZE) + (results % PAGE_SIZE !== 0 ? 1 : 0),
 			series
 		});
 	} catch (e) {
