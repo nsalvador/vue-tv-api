@@ -2,20 +2,20 @@ const express = require('express');
 
 const router = new express.Router();
 
+const axios = require('axios');
+
+const sharp = require('sharp');
+
 const Show = require('../models/show');
 
 const auth = require('../middleware/auth');
 
-const axios = require('axios');
-
 const s3 = require('../aws/aws');
 
-const sharp = require('sharp');
-
 const data = {
-	apikey: process.env.API_KEY,
-	userkey: process.env.USER_KEY,
-	username: process.env.USER_NAME
+	apikey: process.env.TVDB_API_KEY,
+	userkey: process.env.TVDB_USER_KEY,
+	username: process.env.TVDB_USER_NAME
 };
 
 const headers = {};
@@ -70,13 +70,20 @@ const getAndUploadPosterObjects = async series => {
 					url: `https://www.thetvdb.com/banners/posters/${item.posterKey}`,
 					responseType: 'arraybuffer'
 				});
+				const Body = await sharp(Buffer.from(response.data))
+					.resize({
+						width: 680,
+						height: 1000
+					})
+					.jpeg()
+					.toBuffer();
 				await s3.uploadPromise({
 					Bucket: 'tv-calendar-assets',
 					Key: item.posterKey,
 					ACL: 'public-read',
 					ContentEncoding: 'base64',
 					ContentType: 'image/jpeg',
-					Body: Buffer.from(response.data)
+					Body
 				});
 			}
 		}
@@ -130,8 +137,8 @@ router.post('/shows', auth, async (req, res) => {
 			});
 			const buffer = await sharp(Buffer.from(response.data))
 				.resize({
-					// width: 250,
-					// height: 160
+					width: 680,
+					height: 1000
 				})
 				.jpeg()
 				.toBuffer();
@@ -169,8 +176,8 @@ router.post('/shows/search', async (req, res) => {
 		let series = response.data.data;
 		const results = series.length;
 		series = series.splice(page * PAGE_SIZE, PAGE_SIZE);
-		await deleteObjects();
-		await getAndUploadPosterObjects(series);
+		// await deleteObjects();
+		// await getAndUploadPosterObjects(series);
 		res.send({
 			results,
 			page: page == 0 ? 1 : page + 1,
