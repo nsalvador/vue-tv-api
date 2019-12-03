@@ -186,7 +186,7 @@ router.post('/shows/search', async (req, res) => {
 			series
 		});
 	} catch (e) {
-		res.status(500).send(e);
+		res.status(404).send(e);
 	}
 });
 
