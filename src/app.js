@@ -1,17 +1,21 @@
-const express = require('express')
+const express = require('express');
 
-require('./db/mongoose')
+const cors = require('cors');
 
-const showRouter = require('./routes/show')
+require('./db/mongoose');
 
-const userRouter = require('./routes/user')
+const showRouter = require('./routes/show');
 
-const app = express()
+const userRouter = require('./routes/user');
 
-app.use(express.json())
+const app = express();
 
-app.use(showRouter)
+app.use(express.json());
 
-app.use(userRouter)
+app.use(cors());
 
-module.exports = app   
+app.use(showRouter);
+
+app.use(userRouter);
+
+module.exports = app;

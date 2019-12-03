@@ -1,11 +1,10 @@
 const request = require('supertest');
 const app = require('../src/app');
-const Show = require('../src/models/show');
 
-describe('/shows/search route', () => {
+describe("'/shows/search' route", () => {
 	test('Should search for a show', async () => {
 		const response = await request(app)
-			.post('/shows/search')
+			.post('/shows/search?page=1')
 			.send({
 				show: 'blue bloods'
 			})
@@ -16,7 +15,7 @@ describe('/shows/search route', () => {
 
 	test('Should not be able to find show', async () => {
 		await request(app)
-			.post('/shows/search')
+			.post('/shows/search?page=1')
 			.send({
 				show: 'this_show_does_not_exist'
 			})
@@ -24,13 +23,20 @@ describe('/shows/search route', () => {
 	});
 
 	test('Should return the nth page of a searched show', async () => {
-		const page = 5;
-		const response = await request(app)
-			.post(`/shows/search?page=${page}`)
-			.send({
-				show: 'suits'
-			})
+		let response = null;
+		const showObj = { show: 'suits' };
+		const pages = null,
+			page = null;
+
+		response = await request(app)
+			.post('/shows/search?page=1')
+			.send(showObj)
 			.expect(200);
+		pages = response.body.pages;
+		page = Math.floor(Math.random() * pages + 1);
+		response = await request(app)
+			.post(`/shows/search?page=${page}`)
+			.send(showObj);
 		expect(response.body.page).toBe(page);
 	});
 });
