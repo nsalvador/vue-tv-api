@@ -162,9 +162,8 @@ router.post('/shows/search', async (req, res) => {
 			!req.query.page || req.query.page === '1'
 				? 0
 				: parseInt(req.query.page) - 1;
-		const params = {
-			name: req.body.show
-		};
+		const name = req.body.show;
+		const params = { name };
 		await login();
 		let response = await axios({
 			headers,
@@ -179,6 +178,7 @@ router.post('/shows/search', async (req, res) => {
 		// await deleteObjects();
 		// await getAndUploadPosterObjects(series);
 		res.send({
+			name,
 			results,
 			page: page == 0 ? 1 : page + 1,
 			pages:
