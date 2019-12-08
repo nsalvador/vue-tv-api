@@ -63,8 +63,12 @@ const deleteObjects = async () => {
 
 const getAndUploadPosterObjects = async series => {
 	try {
+		console.log(series);
 		for (let item of series) {
-			if (!item.banner.includes('missing') || !item.banner.includes('https')) {
+			console.log(
+				!item.banner.includes('missing') && !item.banner.includes('https')
+			);
+			if (!item.banner.includes('missing') && !item.banner.includes('https')) {
 				item.posterKey = item.banner.split('/')[3];
 				let response = await axios({
 					url: `https://www.thetvdb.com/banners/posters/${item.posterKey}`,
