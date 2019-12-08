@@ -175,8 +175,10 @@ router.post('/shows/search', async (req, res) => {
 		let series = response.data.data;
 		const results = series.length;
 		series = series.splice(page * PAGE_SIZE, PAGE_SIZE);
-		// await deleteObjects();
-		// await getAndUploadPosterObjects(series);
+		if (process.env.NODE_ENV === 'production') {
+			await deleteObjects();
+			await getAndUploadPosterObjects(series);
+		}
 		res.send({
 			name,
 			results,
