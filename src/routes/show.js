@@ -157,7 +157,7 @@ router.post('/shows', auth, async (req, res) => {
 
 router.post('/shows/search', async (req, res) => {
 	try {
-		const PAGE_SIZE = 8;
+		const PAGE_SIZE = 12;
 		const page =
 			!req.query.page || req.query.page === '1'
 				? 0
