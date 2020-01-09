@@ -64,10 +64,14 @@ const deleteObjects = async () => {
 const getAndUploadPosterObjects = async series => {
 	try {
 		for (let item of series) {
-			if (!item.banner.includes('missing') && !item.banner.includes('https')) {
-				item.posterKey = item.banner.split('/')[3];
+			if (item.banner.includes('posters')) {
+				let posterKey = item.banner.split('/')[3];
+				if (!posterKey.includes('.jpg')) {
+					continue;
+				}
+				console.log(posterKey);
 				let response = await axios({
-					url: `https://www.thetvdb.com/banners/posters/${item.posterKey}`,
+					url: `https://www.thetvdb.com/banners/posters/${posterKey}`,
 					responseType: 'arraybuffer'
 				});
 				const Body = await sharp(Buffer.from(response.data))
@@ -77,14 +81,15 @@ const getAndUploadPosterObjects = async series => {
 					})
 					.jpeg()
 					.toBuffer();
-				await s3.uploadPromise({
+				response = await s3.uploadPromise({
 					Bucket: 'tv-calendar-assets',
-					Key: item.posterKey,
+					Key: posterKey,
 					ACL: 'public-read',
 					ContentEncoding: 'base64',
 					ContentType: 'image/jpeg',
 					Body
 				});
+				item.posterUrl = response.Location;
 			}
 		}
 		return Promise.resolve();
@@ -175,6 +180,7 @@ router.post('/shows/search', async (req, res) => {
 		let series = response.data.data;
 		const results = series.length;
 		series = series.splice(page * PAGE_SIZE, PAGE_SIZE);
+
 		if (process.env.NODE_ENV === 'production') {
 			await deleteObjects();
 			await getAndUploadPosterObjects(series);
