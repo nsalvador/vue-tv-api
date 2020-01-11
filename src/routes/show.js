@@ -69,7 +69,6 @@ const getAndUploadPosterObjects = async series => {
 				if (!posterKey.includes('.jpg')) {
 					continue;
 				}
-				console.log(posterKey);
 				let response = await axios({
 					url: `https://www.thetvdb.com/banners/posters/${posterKey}`,
 					responseType: 'arraybuffer'
