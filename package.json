@@ -7,7 +7,8 @@
 		"start-mongo": "sudo /home/nsalvador/mongodb/bin/mongod --dbpath=/home/nsalvador/mongodb-data",
 		"start": "node src/index.js",
 		"dev": "env-cmd -f ./config/dev.env nodemon src/index.js",
-		"test": "env-cmd -f ./config/test.env jest --watch"
+		"test": "env-cmd -f ./config/test.env jest --watch",
+		"deploy": "git push -u origin master && git push heroku master"
 	},
 	"jest": {
 		"testEnvironment": "node"
