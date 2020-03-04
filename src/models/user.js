@@ -8,11 +8,16 @@ const jwt = require('jsonwebtoken');
 
 const userSchema = new mongoose.Schema(
 	{
+		name: {
+			type: String,
+			required: true,
+			trim: true,
+			unique: true
+		},
 		email: {
 			type: String,
 			required: true,
 			trim: true,
-			unique: true,
 			lowercase: true,
 			validate(value) {
 				if (!validator.isEmail(value)) {

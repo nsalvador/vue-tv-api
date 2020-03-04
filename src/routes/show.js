@@ -45,11 +45,9 @@ const deleteObjects = async () => {
 		const data = await s3.listObjectsPromise(params);
 		const contents = data.Contents;
 		if (contents.length !== 0) {
-			const result = contents.map(item => {
-				return {
-					Key: item.Key
-				};
-			});
+			const result = contents.map(item => ({
+				Key: item.Key
+			}));
 			params.Delete = {
 				Objects: result
 			};
