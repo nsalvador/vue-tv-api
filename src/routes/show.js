@@ -23,79 +23,64 @@ const headers = {};
 const baseURL = 'https://api.thetvdb.com';
 
 const login = async () => {
-	try {
-		let response = await axios({
-			baseURL,
-			url: '/login',
-			method: 'post',
-			data
-		});
-		headers['Authorization'] = `Bearer ${response.data.token}`;
-		return Promise.resolve();
-	} catch (e) {
-		return Promise.reject(e);
-	}
+	const response = await axios({
+		baseURL,
+		url: '/login',
+		method: 'post',
+		data
+	});
+	headers['Authorization'] = `Bearer ${response.data.token}`;
 };
 
 const deleteObjects = async () => {
-	try {
-		const params = {
-			Bucket: 'tv-calendar-assets'
+	const params = {
+		Bucket: 'tv-calendar-assets'
+	};
+	const data = await s3.listObjectsPromise(params);
+	const contents = data.Contents;
+	if (contents.length !== 0) {
+		const result = contents.map(item => ({
+			Key: item.Key
+		}));
+		params.Delete = {
+			Objects: result
 		};
-		const data = await s3.listObjectsPromise(params);
-		const contents = data.Contents;
-		if (contents.length !== 0) {
-			const result = contents.map(item => ({
-				Key: item.Key
-			}));
-			params.Delete = {
-				Objects: result
-			};
-			await s3.deleteObjectsPromise(params);
-		}
-		return Promise.resolve();
-	} catch (e) {
-		return Promise.reject(e);
+		await s3.deleteObjectsPromise(params);
 	}
 };
 
 const getAndUploadPosterObjects = async series => {
-	try {
-		for (let item of series) {
-			if (item.image) {
-				if (item.image.includes('posters')) {
-					let posterKey = item.image.split('/')[3];
-					if (!posterKey.includes('.jpg')) {
-						continue;
-					}
-					let response = await axios({
-						url: `https://www.thetvdb.com/banners/posters/${posterKey}`,
-						responseType: 'arraybuffer'
-					});
-					const Body = await sharp(Buffer.from(response.data))
-						.resize({
-							width: 680,
-							height: 1000
-						})
-						.jpeg()
-						.toBuffer();
-					response = await s3.uploadPromise({
-						Bucket: 'tv-calendar-assets',
-						Key: posterKey,
-						ACL: 'public-read',
-						ContentEncoding: 'base64',
-						ContentType: 'image/jpeg',
-						Body
-					});
-					item.posterUrl = response.Location;
+	for (let item of series) {
+		if (item.image) {
+			if (item.image.includes('posters')) {
+				let posterKey = item.image.split('/')[3];
+				if (!posterKey.includes('.jpg')) {
+					continue;
 				}
-			} else {
-				continue;
+				let response = await axios({
+					url: `https://www.thetvdb.com/banners/posters/${posterKey}`,
+					responseType: 'arraybuffer'
+				});
+				const Body = await sharp(Buffer.from(response.data))
+					.resize({
+						width: 680,
+						height: 1000
+					})
+					.jpeg()
+					.toBuffer();
+				response = await s3.uploadPromise({
+					Bucket: 'tv-calendar-assets',
+					Key: posterKey,
+					ACL: 'public-read',
+					ContentEncoding: 'base64',
+					ContentType: 'image/jpeg',
+					Body
+				});
+				item.posterUrl = response.Location;
 			}
+		} else {
+			continue;
 		}
-		return Promise.resolve();
-	} catch (e) {
-		return Promise.reject(e);
 	}
 };
 
