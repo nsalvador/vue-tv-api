@@ -1,88 +1,11 @@
 const express = require('express');
-
 const router = new express.Router();
-
 const axios = require('axios');
-
 const sharp = require('sharp');
-
 const Show = require('../models/show');
-
 const auth = require('../middleware/auth');
-
-const s3 = require('../aws/aws');
-
-const data = {
-	apikey: process.env.TVDB_API_KEY,
-	userkey: process.env.TVDB_USER_KEY,
-	username: process.env.TVDB_USER_NAME
-};
-
-const headers = {};
-
-const baseURL = 'https://api.thetvdb.com';
-
-const login = async () => {
-	const response = await axios({
-		baseURL,
-		url: '/login',
-		method: 'post',
-		data
-	});
-	headers['Authorization'] = `Bearer ${response.data.token}`;
-};
-
-const deleteObjects = async () => {
-	const params = {
-		Bucket: 'tv-calendar-assets'
-	};
-	const data = await s3.listObjectsPromise(params);
-	const contents = data.Contents;
-	if (contents.length !== 0) {
-		const result = contents.map(item => ({
-			Key: item.Key
-		}));
-		params.Delete = {
-			Objects: result
-		};
-		await s3.deleteObjectsPromise(params);
-	}
-};
-
-const getAndUploadPosterObjects = async series => {
-	for (let item of series) {
-		if (item.image) {
-			if (item.image.includes('posters')) {
-				let posterKey = item.image.split('/')[3];
-				if (!posterKey.includes('.jpg')) {
-					continue;
-				}
-				let response = await axios({
-					url: `https://www.thetvdb.com/banners/posters/${posterKey}`,
-					responseType: 'arraybuffer'
-				});
-				const Body = await sharp(Buffer.from(response.data))
-					.resize({
-						width: 680,
-						height: 1000
-					})
-					.jpeg()
-					.toBuffer();
-				response = await s3.uploadPromise({
-					Bucket: 'tv-calendar-assets',
-					Key: posterKey,
-					ACL: 'public-read',
-					ContentEncoding: 'base64',
-					ContentType: 'image/jpeg',
-					Body
-				});
-				item.posterUrl = response.Location;
-			}
-		} else {
-			continue;
-		}
-	}
-};
+const s3 = require('../aws');
+const TVDB = require('../tvdb');
 
 // Create show
 router.post('/shows', auth, async (req, res) => {
@@ -90,8 +13,7 @@ router.post('/shows', auth, async (req, res) => {
 	let show = {
 		_id: body.id.toString(),
 		seriesName: body.seriesName,
-		posterKey: body.posterKey,
-		posterUrl: body.posterLocation
+		posterUrl: body.posterUrl
 	};
 	let response = null,
 		series = null,
@@ -121,9 +43,9 @@ router.post('/shows', auth, async (req, res) => {
 		show.airedSeasons = summary.airedSeasons;
 		show.airedEpisodes = summary.airedEpisodes;
 
-		if (body.posterLocation !== '') {
+		if (show.posterUrl !== '') {
 			response = await axios({
-				url: body.posterLocation,
+				url: show.posterUrl,
 				responseType: 'arraybuffer'
 			});
 			const buffer = await sharp(Buffer.from(response.data))
@@ -146,39 +68,52 @@ router.post('/shows', auth, async (req, res) => {
 	}
 });
 
+// const deletePosters = async () => {
+// 	const params = {
+// 		Bucket: 'tv-calendar-assets'
+// 	};
+// 	const data = await s3.listObjects(params);
+// 	const contents = data.Contents;
+// 	if (contents.length !== 0) {
+// 		const result = contents.map(item => ({
+// 			Key: item.Key
+// 		}));
+// 		params.Delete = {
+// 			Objects: result
+// 		};
+// 		await s3.deleteObjects(params);
+// 	}
+// };
+
+// const getPosters = async series => {
+// 	for (let item of series) {
+// 		const image = item.image;
+// 		if (image && image.includes('posters')) {
+// 			const Key = image.split('/')[3];
+// 			if (!Key.includes('.jpg')) {
+// 				continue;
+// 			}
+// 			const Body = await TVDB.banner(Key);
+// 			const response = await s3.upload({
+// 				Bucket: 'tv-calendar-assets',
+// 				Key,
+// 				ACL: 'public-read',
+// 				ContentEncoding: 'base64',
+// 				ContentType: 'image/jpeg',
+// 				Body
+// 			});
+// 			item.posterUrl = response.Location;
+// 		} else {
+// 			continue;
+// 		}
+// 	}
+// };
+
 router.post('/shows/search', async (req, res) => {
 	try {
-		const PAGE_SIZE = 12;
-		const page =
-			!req.query.page || req.query.page === '1'
-				? 0
-				: parseInt(req.query.page) - 1;
-		const name = req.body.show;
-		const params = { name };
-		await login();
-		let response = await axios({
-			headers,
-			baseURL,
-			url: '/search/series',
-			method: 'get',
-			params
-		});
-		let series = response.data.data;
-		const results = series.length;
-		series = series.splice(page * PAGE_SIZE, PAGE_SIZE);
-
-		if (process.env.NODE_ENV === 'production') {
-			await deleteObjects();
-			await getAndUploadPosterObjects(series);
-		}
-		res.send({
-			name,
-			results,
-			page: page == 0 ? 1 : page + 1,
-			pages:
-				Math.floor(results / PAGE_SIZE) + (results % PAGE_SIZE !== 0 ? 1 : 0),
-			series
-		});
+		await TVDB.login();
+		const series = await TVDB.search(req.body.show);
+		res.send(series);
 	} catch (e) {
 		res.status(404).send(e);
 	}
