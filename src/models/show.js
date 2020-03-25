@@ -4,14 +4,14 @@ const showSchema = new mongoose.Schema(
 	{
 		_id: String,
 		seriesName: String,
-		posterKey: String,
 		posterUrl: String,
 		status: String,
 		overview: String,
 		airsDayOfWeek: String,
 		airedSeasons: Array,
 		airedEpisodes: String,
-		seriesEpisodes: Array,
+		// seriesEpisodes: Array,
+
 		viewed: {
 			type: Boolean,
 			default: false
@@ -20,10 +20,10 @@ const showSchema = new mongoose.Schema(
 			type: mongoose.Schema.Types.ObjectId,
 			required: true,
 			ref: 'User'
-		},
-		poster: {
-			type: Buffer
 		}
+		// poster: {
+		// 	type: Buffer
+		// }
 	},
 	{
 		timestamps: true

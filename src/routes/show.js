@@ -9,33 +9,18 @@ const TVDB = require('../tvdb');
 
 // Create show
 router.post('/shows', auth, async (req, res) => {
-	const body = req.body;
-	let show = {
-		_id: body.id.toString(),
-		seriesName: body.seriesName,
-		posterUrl: body.posterUrl
-	};
-	let response = null,
-		series = null,
-		summary = null;
 	try {
-		await login();
+		const body = req.body;
+		let show = {
+			_id: body.id.toString(),
+			seriesName: body.seriesName,
+			posterUrl: body.posterUrl
+		};
+		let series, summary;
 
-		response = await axios({
-			headers,
-			baseURL,
-			url: `/series/${show._id}`,
-			method: 'get'
-		});
-		series = response.data.data;
-
-		response = await axios({
-			headers,
-			baseURL,
-			url: `/series/${show._id}/episodes/summary`,
-			method: 'get'
-		});
-		summary = response.data.data;
+		await TVDB.login();
+		series = await TVDB.series(show._id);
+		summary = await TVDB.summary(show._id);
 
 		show.status = series.status;
 		show.overview = series.overview;
@@ -43,30 +28,75 @@ router.post('/shows', auth, async (req, res) => {
 		show.airedSeasons = summary.airedSeasons;
 		show.airedEpisodes = summary.airedEpisodes;
 
-		if (show.posterUrl !== '') {
-			response = await axios({
-				url: show.posterUrl,
-				responseType: 'arraybuffer'
-			});
-			const buffer = await sharp(Buffer.from(response.data))
-				.resize({
-					width: 680,
-					height: 1000
-				})
-				.jpeg()
-				.toBuffer();
-			show.poster = buffer;
-		}
 		show = new Show({
 			...show,
 			owner: req.user._id
 		});
 		await show.save();
 		res.status(201).send();
-	} catch (e) {
-		res.status(400).send(e);
+	} catch (error) {
+		res.status(400).send(error);
 	}
 });
+// router.post('/shows', auth, async (req, res) => {
+// 	const body = req.body;
+// 	let show = {
+// 		_id: body.id.toString(),
+// 		seriesName: body.seriesName,
+// 		posterUrl: body.posterUrl
+// 	};
+// 	let response = null,
+// 		series = null,
+// 		summary = null;
+// 	try {
+// 		await login();
+
+// 		response = await axios({
+// 			headers,
+// 			baseURL,
+// 			url: `/series/${show._id}`,
+// 			method: 'get'
+// 		});
+// 		series = response.data.data;
+
+// 		response = await axios({
+// 			headers,
+// 			baseURL,
+// 			url: `/series/${show._id}/episodes/summary`,
+// 			method: 'get'
+// 		});
+// 		summary = response.data.data;
+
+// 		show.status = series.status;
+// 		show.overview = series.overview;
+// 		show.airsDayOfWeek = series.airsDayOfWeek;
+// 		show.airedSeasons = summary.airedSeasons;
+// 		show.airedEpisodes = summary.airedEpisodes;
+
+// 		if (show.posterUrl !== '') {
+// 			response = await axios({
+// 				url: show.posterUrl,
+// 				responseType: 'arraybuffer'
+// 			});
+// 			const buffer = await sharp(Buffer.from(response.data))
+// 				.resize({
+// 					width: 680,
+// 					height: 1000
+// 				})
+// 				.jpeg()
+// 				.toBuffer();
+// 			show.poster = buffer;
+// 		}
+// 		show = new Show({
+// 			...show,
+// 			owner: req.user._id
+// 		});
+// 		await show.save();
+// 		res.status(201).send();
+// 	} catch (e) {
+// 		res.status(400).send(e);
+// 	}
+// });
 
 // const deletePosters = async () => {
 // 	const params = {
@@ -114,8 +144,8 @@ router.post('/shows/search', async (req, res) => {
 		await TVDB.login();
 		const series = await TVDB.search(req.body.show);
 		res.send(series);
-	} catch (e) {
-		res.status(404).send(e);
+	} catch (error) {
+		res.status(404).send(error);
 	}
 });
 

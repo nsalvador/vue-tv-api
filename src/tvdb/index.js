@@ -28,6 +28,22 @@ class TVDB {
 		return response.data.data;
 	}
 
+	async series(id) {
+		const response = await axios({
+			url: `/series/${id}`,
+			method: 'get'
+		});
+		return response.data.data;
+	}
+
+	async summary(id) {
+		const response = await axios({
+			url: `/series/${id}/episodes/summary`,
+			method: 'get'
+		});
+		return response.data.data;
+	}
+
 	async banner(key) {
 		const response = await axios({
 			url: `https://www.thetvdb.com/banners/posters/${key}`,
