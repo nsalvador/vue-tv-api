@@ -13,7 +13,7 @@ router.post('/users/register', async (req, res) => {
 		const token = await user.generateAuthToken();
 		res.status(201).send({ user, token });
 	} catch (e) {
-		res.status(400).send(e);
+		res.status(400).send();
 	}
 });
 
@@ -32,7 +32,7 @@ router.post('/users/login', async (req, res) => {
 
 router.post('/users/logout', auth, async (req, res) => {
 	try {
-		req.user.tokens = req.user.tokens.filter(token => {
+		req.user.tokens = req.user.tokens.filter((token) => {
 			return token.token !== req.token;
 		});
 		await req.user.save();
@@ -59,7 +59,7 @@ router.get('/users/me', auth, async (req, res) => {
 router.patch('/users/me', auth, async (req, res) => {
 	const updates = Object.keys(req.body);
 	try {
-		updates.forEach(update => (req.user[update] = req.body[update]));
+		updates.forEach((update) => (req.user[update] = req.body[update]));
 		await req.user.save();
 		res.send(req.user);
 	} catch (e) {
