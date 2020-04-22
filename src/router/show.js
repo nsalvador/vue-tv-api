@@ -3,9 +3,9 @@ const router = new express.Router();
 const axios = require('axios');
 const sharp = require('sharp');
 const Show = require('../models/show');
-const auth = require('../middleware/auth');
-const s3 = require('../aws');
-const TVDB = require('../tvdb');
+const auth = require('../lib/auth');
+const s3 = require('../lib/aws');
+const TVDB = require('../lib/tvdb');
 
 // Create show
 router.post('/shows', auth, async (req, res) => {
@@ -14,7 +14,7 @@ router.post('/shows', auth, async (req, res) => {
 		let show = {
 			_id: body.id.toString(),
 			seriesName: body.seriesName,
-			posterUrl: body.posterUrl
+			posterUrl: body.posterUrl,
 		};
 		let series, summary;
 
@@ -30,7 +30,7 @@ router.post('/shows', auth, async (req, res) => {
 
 		show = new Show({
 			...show,
-			owner: req.user._id
+			owner: req.user._id,
 		});
 		await show.save();
 		res.status(201).send();
@@ -167,8 +167,8 @@ router.get('/shows', auth, async (req, res) => {
 				options: {
 					limit: parseInt(req.query.limit),
 					skip: parseInt(req.query.skip),
-					sort
-				}
+					sort,
+				},
 			})
 			.execPopulate();
 		res.send(req.user.shows);
@@ -182,7 +182,7 @@ router.get('/shows/:id', auth, async (req, res) => {
 	try {
 		const show = await Show.findOne({
 			_id,
-			owner: req.user._id
+			owner: req.user._id,
 		});
 		if (!show) {
 			return res.status(404).send();
@@ -192,7 +192,7 @@ router.get('/shows/:id', auth, async (req, res) => {
 			headers,
 			baseURL,
 			url: `/series/${_id}/episodes`,
-			method: 'get'
+			method: 'get',
 		});
 		show.seriesEpisodes = response.data.data;
 		res.send(show);
@@ -206,12 +206,12 @@ router.patch('/shows/:id', auth, async (req, res) => {
 	try {
 		const show = await Show.findOne({
 			_id: req.params.id,
-			owner: req.user._id
+			owner: req.user._id,
 		});
 		if (!show) {
 			return res.status(404).send();
 		}
-		updates.forEach(update => (show[update] = req.body[update]));
+		updates.forEach((update) => (show[update] = req.body[update]));
 		await show.save();
 		res.send(show);
 	} catch (e) {
@@ -223,7 +223,7 @@ router.delete('/shows/:id', auth, async (req, res) => {
 	try {
 		const show = await Show.findOneAndDelete({
 			_id: req.params.id,
-			owner: req.user._id
+			owner: req.user._id,
 		});
 		if (!show) {
 			return res.status(404).send();
