@@ -144,8 +144,8 @@ router.post('/shows/search', async (req, res) => {
 		await TVDB.login();
 		const series = await TVDB.search(req.body.show);
 		res.send(series);
-	} catch (error) {
-		res.status(404).send(error);
+	} catch (e) {
+		res.status(404).send({ message: 'Not Found' });
 	}
 });
 
